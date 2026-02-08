@@ -103,6 +103,11 @@ export default function ApiTester({ config, onMessage, authFetch }) {
                 signal: abortControllerRef.current.signal,
             })
 
+            // If account selection is needed, we need to pass a specific header or parameter
+            // Currently Deno backend doesn't support specific account selection via header
+            // It uses Round Robin or Configured Account
+            // TODO: Add support for X-DS-Account-ID header in backend if needed
+
             if (!res.ok) {
                 const data = await res.json()
                 setResponse({ success: false, error: data.error?.message || t('apiTester.requestFailed') })
@@ -143,6 +148,7 @@ export default function ApiTester({ config, onMessage, authFetch }) {
                             if (delta.reasoning_content) {
                                 setStreamingThinking(prev => prev + delta.reasoning_content)
                             }
+                            // Also check for content even if reasoning_content is present
                             if (delta.content) {
                                 console.log('[ApiTester] Content:', delta.content)
                                 setStreamingContent(prev => prev + delta.content)
