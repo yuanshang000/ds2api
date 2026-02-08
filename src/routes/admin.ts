@@ -254,9 +254,26 @@ router.delete("/accounts", verifyAdmin, async (c) => {
 });
 
 router.post("/accounts/test", verifyAdmin, async (c) => {
-    const body = await c.req.json();
-    const account = body.account;
-    const model = body.model || "deepseek-chat";
+    let body;
+    try {
+        body = await c.req.json();
+    } catch {
+        return c.json({ error: "Invalid JSON" }, 400);
+    }
+    
+    // Frontend might send "account" object OR direct fields (email, password)
+    // If account is nested
+    let account = body.account;
+    
+    // If account fields are at root
+    if (!account && (body.email || body.mobile)) {
+        account = {
+            email: body.email,
+            mobile: body.mobile,
+            password: body.password,
+            token: body.token
+        };
+    }
 
     if (!account) return c.json({ error: "Missing account" }, 400);
 
