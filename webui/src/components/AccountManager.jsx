@@ -11,7 +11,8 @@ import {
     Check,
     ChevronLeft,
     ChevronRight,
-    ChevronDown
+    ChevronDown,
+    AlertCircle
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useI18n } from '../i18n'
