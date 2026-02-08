@@ -35,6 +35,5 @@ export default defineConfig(({ mode }) => ({
         outDir: '../static/admin',
         emptyOutDir: true,
     },
-    // Use / for dev, /admin/ for production build
-    base: mode === 'production' ? '/admin/' : '/',
+    base: '/admin/',
 }))

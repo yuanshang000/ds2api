@@ -5,7 +5,7 @@ import App from './App.jsx'
 import { I18nProvider } from './i18n'
 import './styles.css'
 
-const basename = import.meta.env.MODE === 'production' ? '/admin' : '/'
+const basename = '/admin'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
