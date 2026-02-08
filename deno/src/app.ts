@@ -15,13 +15,21 @@ app.route("/", openaiRoute);
 app.route("/admin", adminRoute);
 
 // Serve Static Files (Frontend)
+
+// 1. Redirect /admin to /admin/ so relative paths in index.html work
+app.get("/admin", (c) => c.redirect("/admin/"));
+
+// 2. Explicitly serve index.html for the root
+app.get("/admin/", serveStatic({ path: "./static/admin/index.html" }));
+
+// 3. Serve other static files
 // We need to rewrite the path because Hono doesn't automatically strip the prefix in serveStatic
 app.use("/admin/*", serveStatic({
   root: "./static/admin",
   rewriteRequestPath: (path) => path.replace(/^\/admin/, ""),
 }));
 
-// Fallback for SPA (Single Page Application)
+// 4. Fallback for SPA (Single Page Application)
 // If a file isn't found in /admin/* (e.g. /admin/login), serve index.html
 // Note: This must come AFTER the static file serving above
 app.get("/admin/*", async (c, next) => {
