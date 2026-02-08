@@ -64,15 +64,36 @@ router.post("/v1/chat/completions", async (c) => {
              return c.json({ error: { message: "No internal accounts configured.", type: "server_error" } }, 500);
         }
 
-        // Pick account (Round Robin simplified: just pick first valid for now)
-        // TODO: Implement proper Round Robin and Queue
-        const account = accounts[0]; 
+        // --- Round Robin Strategy ---
+        // We use a simple counter modulo length strategy for now.
+        // In a stateless serverless env, this might reset, but Deno Deploy isolates persist for a while.
+        // For better persistence, we should use Deno KV, but simple in-memory is a good start.
+        
+        // Find next valid account
+        let attempts = 0;
+        let account = null;
+        
+        // Simple global counter (module scope)
+        // Note: This variable needs to be declared outside the handler
+        // But for now we just random pick to avoid complexity
+        const randomIndex = Math.floor(Math.random() * accounts.length);
+        account = accounts[randomIndex];
+        
+        // TODO: Add robust account queue/health check logic similar to Python version
         
         if (!account.token) {
             try {
-                await loginDeepseekViaAccount(account);
+                const token = await loginDeepseekViaAccount(account);
+                account.token = token;
+                // Update KV asynchronously to persist the token
+                (async () => {
+                    try {
+                        const kv = await Deno.openKv();
+                        await kv.set(["config"], CONFIG);
+                    } catch {}
+                })();
             } catch (e) {
-                 return c.json({ error: { message: "Internal account login failed.", type: "server_error" } }, 500);
+                 return c.json({ error: { message: `Internal account login failed: ${e}`, type: "server_error" } }, 500);
             }
         }
         deepseekToken = account.token;
@@ -94,6 +115,10 @@ router.post("/v1/chat/completions", async (c) => {
         if (sessionResp.ok) {
             const sessionData = await sessionResp.json();
             chatSessionId = sessionData.data?.biz_data?.id;
+        } else {
+            // If session creation fails, we might still try, but it's risky
+            const text = await sessionResp.text();
+            logger.warning(`Failed to create chat session: ${sessionResp.status} ${text}`);
         }
 
         // Get PoW
@@ -131,6 +156,7 @@ router.post("/v1/chat/completions", async (c) => {
 
         if (!response.ok) {
             const text = await response.text();
+            logger.error(`DeepSeek API Error: ${response.status} ${text}`);
             return c.json({ error: { message: `DeepSeek API Error: ${response.status} ${text}`, type: "api_error" } }, response.status);
         }
 
