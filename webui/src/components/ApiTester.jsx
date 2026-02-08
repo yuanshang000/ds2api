@@ -88,9 +88,10 @@ export default function ApiTester({ config, onMessage, authFetch }) {
                 'Authorization': `Bearer ${key}`,
             };
             
-            // If a specific account is selected, pass it in a custom header (Backend needs to support this)
-            // Or we just accept that the test uses the pool strategy.
-            // For Deno implementation, let's keep it simple.
+            // Pass selected account if available
+            if (selectedAccount) {
+                headers['X-DS-Account-ID'] = selectedAccount;
+            }
 
             const res = await fetch('/v1/chat/completions', {
                 method: 'POST',

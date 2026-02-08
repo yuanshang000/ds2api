@@ -6,6 +6,8 @@ import { messagesPrepare } from "../core/messages.ts";
 import { DEEPSEEK_COMPLETION_URL, BASE_HEADERS } from "../core/constants.ts";
 import { parseSseChunkForContent, parseDeepseekSseLine } from "../core/sse_parser.ts";
 
+import { getAccountIdentifier } from "../core/utils.ts";
+
 const router = new Hono();
 
 router.get("/v1/models", (c) => {
@@ -64,22 +66,27 @@ router.post("/v1/chat/completions", async (c) => {
              return c.json({ error: { message: "No internal accounts configured.", type: "server_error" } }, 500);
         }
 
-        // --- Round Robin Strategy ---
-        // We use a simple counter modulo length strategy for now.
-        // In a stateless serverless env, this might reset, but Deno Deploy isolates persist for a while.
-        // For better persistence, we should use Deno KV, but simple in-memory is a good start.
-        
-        // Find next valid account
-        let attempts = 0;
         let account = null;
         
-        // Simple global counter (module scope)
-        // Note: This variable needs to be declared outside the handler
-        // But for now we just random pick to avoid complexity
-        const randomIndex = Math.floor(Math.random() * accounts.length);
-        account = accounts[randomIndex];
-        
-        // TODO: Add robust account queue/health check logic similar to Python version
+        // Check for X-DS-Account-ID header for specific account selection
+        const specificAccountId = c.req.header("X-DS-Account-ID");
+        if (specificAccountId) {
+            account = accounts.find(a => getAccountIdentifier(a) === specificAccountId);
+            if (!account) {
+                // Fallback to pool if specific account not found? Or error?
+                // For now, let's log warning and fallback to pool
+                logger.warning(`Requested account ${specificAccountId} not found, falling back to pool`);
+            } else {
+                logger.info(`Using specific account: ${getAccountIdentifier(account)}`);
+            }
+        }
+
+        // If no specific account or not found, use Round Robin
+        if (!account) {
+            const randomIndex = Math.floor(Math.random() * accounts.length);
+            account = accounts[randomIndex];
+            logger.info(`Using random account: ${getAccountIdentifier(account)}`);
+        }
         
         if (!account.token) {
             try {
