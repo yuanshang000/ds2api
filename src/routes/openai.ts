@@ -142,7 +142,6 @@ router.post("/v1/chat/completions", async (c) => {
             save_chat: false,
             search_enabled: false,
             thinking_enabled: false,
-            pow_challenge_response: pow,
             stream: true, 
             chat_session_id: chatSessionId, // Add session ID
             ref_file_ids: [], // Required by DeepSeek API
@@ -151,8 +150,10 @@ router.post("/v1/chat/completions", async (c) => {
         const headers = {
             ...BASE_HEADERS,
             "Authorization": `Bearer ${deepseekToken}`,
+            "x-ds-pow-response": pow, // Add PoW header
         };
 
+        logger.info("Sending completion request...");
         const response = await fetch(DEEPSEEK_COMPLETION_URL, {
             method: "POST",
             headers,
