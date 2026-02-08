@@ -175,6 +175,60 @@ router.delete("/keys/:key", verifyAdmin, async (c) => {
 
 // --- Account Routes ---
 
+router.post("/accounts", verifyAdmin, async (c) => {
+    const data = await c.req.json();
+    const { email, password, mobile } = data;
+
+    if (!password || (!email && !mobile)) {
+        return c.json({ error: "Missing required fields" }, 400);
+    }
+
+    const newAccount = { email, password, mobile, token: "" };
+    
+    // Check duplicates
+    const id = getAccountIdentifier(newAccount);
+    if (CONFIG.accounts.some(a => getAccountIdentifier(a) === id)) {
+        return c.json({ error: "Account already exists" }, 400);
+    }
+
+    CONFIG.accounts.push(newAccount);
+
+    // Persist
+    try {
+        const kv = await Deno.openKv();
+        await kv.set(["config"], CONFIG);
+    } catch (e) {
+        console.error("Failed to save to Deno KV:", e);
+    }
+
+    return c.json({ success: true, message: "Account added" });
+});
+
+router.delete("/accounts", verifyAdmin, async (c) => {
+    const email = c.req.query("email");
+    const mobile = c.req.query("mobile");
+    const id = (email || mobile || "").trim();
+
+    if (!id) return c.json({ error: "Missing email or mobile" }, 400);
+
+    const initialLength = CONFIG.accounts.length;
+    CONFIG.accounts = CONFIG.accounts.filter(a => getAccountIdentifier(a) !== id);
+
+    if (CONFIG.accounts.length === initialLength) {
+        return c.json({ error: "Account not found" }, 404);
+    }
+
+    // Persist
+    try {
+        const kv = await Deno.openKv();
+        await kv.set(["config"], CONFIG);
+    } catch (e) {
+        console.error("Failed to save to Deno KV:", e);
+    }
+
+    return c.json({ success: true, message: "Account deleted" });
+});
+
 router.post("/accounts/test", verifyAdmin, async (c) => {
     const body = await c.req.json();
     const account = body.account;
