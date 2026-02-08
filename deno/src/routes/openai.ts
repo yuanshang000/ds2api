@@ -48,41 +48,16 @@ router.post("/v1/chat/completions", async (c) => {
     }
     const token = authHeader.replace("Bearer ", "").trim();
     
-    // Check if token is in configured keys (Internal Account Mode)
-    // Load config from env if not loaded
-    let configKeys = CONFIG.keys || [];
-    if (configKeys.length === 0) {
-        const keysEnv = Deno.env.get("AUTH_KEYS"); // Comma separated or JSON
-        if (keysEnv) {
-             try {
-                // Try JSON
-                const parsed = JSON.parse(keysEnv);
-                if (Array.isArray(parsed)) configKeys = parsed;
-             } catch {
-                // Try comma separated
-                configKeys = keysEnv.split(",").map(k => k.trim());
-             }
-        }
-    }
-
     let deepseekToken = token;
     let useInternalAccount = false;
 
+    // Use keys from CONFIG (already loaded from file or env)
+    const configKeys = CONFIG.keys || [];
+
     if (configKeys.includes(token)) {
         useInternalAccount = true;
-        // Load accounts
-        let accounts = CONFIG.accounts || [];
-        if (accounts.length === 0) {
-            const accountsJson = Deno.env.get("ACCOUNTS");
-            if (accountsJson) {
-                try {
-                    const parsed = JSON.parse(accountsJson);
-                    if (Array.isArray(parsed)) accounts = parsed;
-                } catch (e) {
-                    logger.error(`Failed to parse ACCOUNTS env: ${e}`);
-                }
-            }
-        }
+        // Use accounts from CONFIG (already loaded from file or env)
+        const accounts = CONFIG.accounts || [];
 
         if (accounts.length === 0) {
              return c.json({ error: { message: "No internal accounts configured.", type: "server_error" } }, 500);
