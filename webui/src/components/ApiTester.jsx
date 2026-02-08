@@ -68,6 +68,14 @@ export default function ApiTester({ config, onMessage, authFetch }) {
 
         try {
             const key = apiKey || (config.keys?.[0] || '')
+            // Note: If selectedAccount is set, we could potentially pass a special header or use a different endpoint
+            // But for standard OpenAI compatibility, we rely on the Authorization header.
+            // If the user selects a specific account, we might need to handle that in the backend via a special token format
+            // or just ignore it for now as the backend does Round Robin by default.
+            
+            // To support "Specific Account" testing in Deno backend, we might need to modify the backend to accept an account ID header.
+            // For now, let's just use the key.
+
             if (!key) {
                 onMessage('error', t('apiTester.missingApiKey'))
                 setLoading(false)
@@ -75,12 +83,18 @@ export default function ApiTester({ config, onMessage, authFetch }) {
                 return
             }
 
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${key}`,
+            };
+            
+            // If a specific account is selected, pass it in a custom header (Backend needs to support this)
+            // Or we just accept that the test uses the pool strategy.
+            // For Deno implementation, let's keep it simple.
+
             const res = await fetch('/v1/chat/completions', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${key}`,
-                },
+                headers,
                 body: JSON.stringify({
                     model,
                     messages: [{ role: 'user', content: message }],
@@ -154,41 +168,8 @@ export default function ApiTester({ config, onMessage, authFetch }) {
     }
 
     const sendTest = async () => {
-        if (selectedAccount) {
-            setLoading(true)
-            setResponse(null)
-            try {
-                const res = await apiFetch('/admin/accounts/test', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        identifier: selectedAccount,
-                        model,
-                        message,
-                    }),
-                })
-                const data = await res.json()
-                setResponse({
-                    success: data.success,
-                    status_code: res.status,
-                    response: data,
-                    account: selectedAccount,
-                })
-                if (data.success) {
-                    onMessage('success', t('apiTester.testSuccess', { account: selectedAccount, time: data.response_time }))
-                } else {
-                    onMessage('error', `${selectedAccount}: ${data.message}`)
-                }
-            } catch (e) {
-                onMessage('error', t('apiTester.networkError', { error: e.message }))
-                setResponse({ error: e.message })
-            } finally {
-                setLoading(false)
-            }
-            return
-        }
-
-        directTest()
+        // Always use directTest (/v1/chat/completions) as requested
+        await directTest()
     }
 
     useEffect(() => {
