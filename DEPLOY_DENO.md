@@ -1,46 +1,46 @@
 
-# Deploying DS2API to Deno Deploy (Full Stack)
+# Deploying DS2API to Deno Deploy
 
 This guide explains how to deploy the full DS2API application (Frontend + Backend) to Deno Deploy.
 
-## Prerequisites
+## Project Structure
 
-1. A [Deno Deploy](https://deno.com/deploy) account.
-2. A GitHub repository with this code.
-3. Node.js (for building the frontend locally).
+The project is now configured as a Deno-first project:
+- `src/`: Backend source code (TypeScript)
+- `static/admin/`: Built frontend assets
+- `deno.json`: Deno configuration
+- `config.json`: Account configuration
+- `sha3_wasm_bg.7b9ca65ddd.wasm`: PoW calculation module
 
-## Step 1: Build the Frontend
+## Step 1: Frontend Build (Already Done)
 
-Since Deno Deploy doesn't run `npm build`, you must build the frontend locally and commit the static files.
+I have already run the build for you. The `static/admin` directory now contains the necessary files.
+If you need to rebuild in the future:
+```bash
+cd webui
+npm install
+npm run build
+```
 
-1. Open a terminal in the `webui` directory:
-   ```bash
-   cd webui
-   npm install
-   npm run build
-   ```
-2. This will generate the frontend files in `static/admin`.
-3. Commit these files to your repository:
-   ```bash
-   git add ../static/admin
-   git commit -m "Build frontend for deployment"
-   git push
-   ```
+## Step 2: Push to GitHub
 
-## Step 2: Configure Deno Deploy
+Commit all changes, **especially the `static/admin` folder** and the new `src/` structure.
+```bash
+git add .
+git commit -m "Refactor for Deno deployment"
+git push
+```
+
+## Step 3: Configure Deno Deploy
 
 1. **Create Project**: Go to Deno Deploy and create a new project linked to your repository.
-2. **Entry Point**: Set to `deno/src/main.ts`.
-3. **Environment Variables**:
-   - `ACCOUNTS`: JSON string of your DeepSeek accounts.
-   - `DS2API_ADMIN_KEY`: Password for the Admin Panel (Default: `your-admin-secret-key`).
-   - `DS2API_JWT_SECRET`: Secret for JWT tokens (Optional, defaults to ADMIN_KEY).
+2. **Entry Point**: Select `src/main.ts` (it should be automatically detected).
+3. **Environment Variables** (Optional if using config.json):
+   - `DS2API_ADMIN_KEY`: Admin password (default: `your-admin-secret-key`)
+   - `ACCOUNTS`: JSON string of accounts (overrides config.json)
 
-## Step 3: Usage
+## Usage
 
+- **Home Page**: `https://<your-project>.deno.dev/` (Redirects to Admin)
 - **Admin Panel**: `https://<your-project>.deno.dev/admin/`
 - **API Endpoint**: `https://<your-project>.deno.dev/v1/chat/completions`
-
-## Notes
-
-- **Persistence**: Configuration changes made in the Admin Panel (like adding accounts) are currently **in-memory only** or require Deno KV (not fully implemented for persistence yet). It is recommended to manage accounts via the `ACCOUNTS` environment variable for now.
