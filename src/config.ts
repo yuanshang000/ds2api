@@ -3,7 +3,6 @@ import { ensureDir } from "std/fs/mod.ts";
 
 export const WASM_PATH = "./sha3_wasm_bg.7b9ca65ddd.wasm";
 
-// Simple logger
 export const logger = {
   info: (msg: string) => console.log(`[INFO] ${msg}`),
   error: (msg: string) => console.error(`[ERROR] ${msg}`),

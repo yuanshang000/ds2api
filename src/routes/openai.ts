@@ -105,6 +105,7 @@ router.post("/v1/chat/completions", async (c) => {
             ...BASE_HEADERS,
             "Authorization": `Bearer ${deepseekToken}`,
         };
+        logger.info("Creating chat session...");
         const sessionResp = await fetch("https://chat.deepseek.com/api/v0/chat_session/create", {
             method: "POST",
             headers: sessionHeaders,
@@ -115,6 +116,7 @@ router.post("/v1/chat/completions", async (c) => {
         if (sessionResp.ok) {
             const sessionData = await sessionResp.json();
             chatSessionId = sessionData.data?.biz_data?.id;
+            logger.info(`Chat session created: ${chatSessionId}`);
         } else {
             // If session creation fails, we might still try, but it's risky
             const text = await sessionResp.text();
@@ -122,10 +124,13 @@ router.post("/v1/chat/completions", async (c) => {
         }
 
         // Get PoW
+        logger.info("Calculating PoW...");
         const pow = await getPowResponse(deepseekToken);
         if (!pow) {
+             logger.error("Failed to calculate PoW");
              return c.json({ error: { message: "Failed to calculate PoW", type: "server_error" } }, 500);
         }
+        logger.info("PoW calculated successfully");
 
         // Prepare payload
         const prompt = messagesPrepare(messages);
@@ -157,6 +162,7 @@ router.post("/v1/chat/completions", async (c) => {
         if (!response.ok) {
             const text = await response.text();
             logger.error(`DeepSeek API Error: ${response.status} ${text}`);
+            console.error(`DeepSeek API Error Body: ${text}`); // Force stdout
             return c.json({ error: { message: `DeepSeek API Error: ${response.status} ${text}`, type: "api_error" } }, response.status);
         }
 
@@ -261,6 +267,7 @@ router.post("/v1/chat/completions", async (c) => {
 
     } catch (e) {
         logger.error(`Chat completion error: ${e}`);
+        console.error(e); // Force stdout
         return c.json({ error: { message: String(e), type: "server_error" } }, 500);
     }
 });
