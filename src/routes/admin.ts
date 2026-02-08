@@ -229,6 +229,29 @@ router.get("/accounts", verifyAdmin, (c) => {
     });
 });
 
+// Support DELETE /accounts/:id
+router.delete("/accounts/:id", verifyAdmin, async (c) => {
+    const id = decodeURIComponent(c.req.param("id")).trim();
+    if (!id) return c.json({ error: "Missing id" }, 400);
+
+    const initialLength = CONFIG.accounts.length;
+    CONFIG.accounts = CONFIG.accounts.filter(a => getAccountIdentifier(a) !== id);
+
+    if (CONFIG.accounts.length === initialLength) {
+        return c.json({ error: "Account not found" }, 404);
+    }
+
+    // Persist
+    try {
+        const kv = await Deno.openKv();
+        await kv.set(["config"], CONFIG);
+    } catch (e) {
+        console.error("Failed to save to Deno KV:", e);
+    }
+
+    return c.json({ success: true, message: "Account deleted" });
+});
+
 router.delete("/accounts", verifyAdmin, async (c) => {
     const email = c.req.query("email");
     const mobile = c.req.query("mobile");
@@ -263,11 +286,17 @@ router.post("/accounts/test", verifyAdmin, async (c) => {
     }
     
     // Frontend might send "account" object OR direct fields (email, password)
-    // If account is nested
+    // OR "identifier" (email/mobile string) when testing existing account
     let account = body.account;
     
-    // If account fields are at root
-    if (!account && (body.email || body.mobile)) {
+    // Case 1: identifier provided (from WebUI test button)
+    if (body.identifier) {
+        const id = body.identifier;
+        account = CONFIG.accounts.find(a => getAccountIdentifier(a) === id);
+        if (!account) return c.json({ error: "Account not found" }, 404);
+    }
+    // Case 2: Direct fields at root (email/mobile/password)
+    else if (!account && (body.email || body.mobile)) {
         account = {
             email: body.email,
             mobile: body.mobile,
