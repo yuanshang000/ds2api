@@ -4,6 +4,7 @@ import { logger, CONFIG } from "../config.ts";
 import { loginDeepseekViaAccount, getPowResponse } from "../core/deepseek.ts";
 import { messagesPrepare } from "../core/messages.ts";
 import { DEEPSEEK_COMPLETION_URL, BASE_HEADERS } from "../core/constants.ts";
+import { parseSseChunkForContent, parseDeepseekSseLine } from "../core/sse_parser.ts";
 
 const router = new Hono();
 
@@ -64,6 +65,7 @@ router.post("/v1/chat/completions", async (c) => {
         }
 
         // Pick account (Round Robin simplified: just pick first valid for now)
+        // TODO: Implement proper Round Robin and Queue
         const account = accounts[0]; 
         
         if (!account.token) {
@@ -113,6 +115,7 @@ router.post("/v1/chat/completions", async (c) => {
             pow_challenge_response: pow,
             stream: true, 
             chat_session_id: chatSessionId, // Add session ID
+            ref_file_ids: [], // Required by DeepSeek API
         };
         
         const headers = {
@@ -141,21 +144,81 @@ router.post("/v1/chat/completions", async (c) => {
         if (!reader) throw new Error("No response body");
 
         (async () => {
+            let currentFragmentType = "thinking"; // Default start
+            const thinkingEnabled = true; // Assume true for parsing logic
+
             try {
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) {
-                        await writer.write(encoder.encode("data: [DONE]\n\n"));
+                        if (stream) {
+                            await writer.write(encoder.encode("data: [DONE]\n\n"));
+                        }
                         break;
                     }
                     const chunk = decoder.decode(value, { stream: true });
-                    // TODO: Improve SSE transformation
-                    await writer.write(encoder.encode(chunk)); 
+                    const lines = chunk.split("\n");
+                    
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || !trimmed.startsWith("data:")) continue;
+                        
+                        const sseChunk = parseDeepseekSseLine(trimmed);
+                        if (!sseChunk) continue;
+                        if (sseChunk.type === "done") continue;
+
+                        const { contents, isFinished, newFragmentType } = parseSseChunkForContent(
+                            sseChunk, 
+                            thinkingEnabled, 
+                            currentFragmentType
+                        );
+                        currentFragmentType = newFragmentType;
+
+                        if (contents.length > 0) {
+                            for (const [content, type] of contents) {
+                                if (stream) {
+                                    const openaiChunk = {
+                                        id: "chatcmpl-" + Math.random().toString(36).substring(7),
+                                        object: "chat.completion.chunk",
+                                        created: Math.floor(Date.now() / 1000),
+                                        model: model,
+                                        choices: [{
+                                            index: 0,
+                                            delta: {
+                                                [type === "thinking" ? "reasoning_content" : "content"]: content
+                                            },
+                                            finish_reason: null
+                                        }]
+                                    };
+                                    await writer.write(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
+                                } else {
+                                    // Handle non-stream accumulation (not implemented fully in this snippet)
+                                }
+                            }
+                        }
+                        
+                        if (isFinished && stream) {
+                             const finishChunk = {
+                                id: "chatcmpl-" + Math.random().toString(36).substring(7),
+                                object: "chat.completion.chunk",
+                                created: Math.floor(Date.now() / 1000),
+                                model: model,
+                                choices: [{
+                                    index: 0,
+                                    delta: {},
+                                    finish_reason: "stop"
+                                }]
+                            };
+                            await writer.write(encoder.encode(`data: ${JSON.stringify(finishChunk)}\n\n`));
+                        }
+                    }
                 }
             } catch (e) {
                 logger.error(`Stream error: ${e}`);
                 try {
-                    await writer.write(encoder.encode(`data: {"error": "${String(e)}"}\n\n`));
+                    if (stream) {
+                        await writer.write(encoder.encode(`data: {"error": "${String(e)}"}\n\n`));
+                    }
                 } catch {}
             } finally {
                 await writer.close();
