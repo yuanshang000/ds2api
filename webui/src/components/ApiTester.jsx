@@ -175,6 +175,10 @@ export default function ApiTester({ config, onMessage, authFetch }) {
     }
 
     const sendTest = async () => {
+        // Clear previous response when sending new test
+        setResponse(null)
+        setStreamingContent('')
+        setStreamingThinking('')
         // Always use directTest (/v1/chat/completions) as requested
         await directTest()
     }
