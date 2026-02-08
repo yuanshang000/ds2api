@@ -224,7 +224,8 @@ router.get("/accounts", verifyAdmin, (c) => {
         total: safeAccounts.length,
         items: safeAccounts.slice(start, end),
         page,
-        page_size: pageSize
+        page_size: pageSize,
+        total_pages: Math.ceil(safeAccounts.length / pageSize) // Frontend expects this field
     });
 });
 
