@@ -233,18 +233,18 @@ export default function AccountManager({ config, onRefresh, onMessage, authFetch
                             </div>
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{t('accountManager.available')}</p>
                             <div className="mt-2 flex items-baseline gap-2">
-                                <span className="text-3xl font-bold text-foreground">{queueStatus.available}</span>
+                                <span className="text-3xl font-bold text-foreground">{queueStatus.valid}</span>
                                 <span className="text-xs text-muted-foreground">{t('accountManager.accountsUnit')}</span>
                             </div>
                         </div>
                         <div className="bg-card border border-border rounded-xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
                             <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Server className="w-16 h-16" />
+                                <AlertCircle className="w-16 h-16" />
                             </div>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{t('accountManager.inUse')}</p>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{t('accountManager.invalid')}</p>
                             <div className="mt-2 flex items-baseline gap-2">
-                                <span className="text-3xl font-bold text-foreground">{queueStatus.in_use}</span>
-                                <span className="text-xs text-muted-foreground">{t('accountManager.threadsUnit')}</span>
+                                <span className="text-3xl font-bold text-foreground">{queueStatus.invalid}</span>
+                                <span className="text-xs text-muted-foreground">{t('accountManager.accountsUnit')}</span>
                             </div>
                         </div>
                         <div className="bg-card border border-border rounded-xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden group">
