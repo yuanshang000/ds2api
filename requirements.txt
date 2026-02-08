@@ -1,0 +1,24 @@
+# DS2API 依赖
+# 安装命令: pip install -r requirements.txt
+# Python 版本要求: >=3.9
+
+# ===== Web 框架 =====
+fastapi>=0.110.0,<1.0.0
+uvicorn[standard]>=0.24.0,<1.0.0
+
+# ===== HTTP 客户端 =====
+# curl_cffi: 支持 TLS 指纹模拟，绕过 Cloudflare 等防护
+curl_cffi>=0.7.0
+# httpx: 异步 HTTP 客户端，用于 Vercel API 调用
+httpx>=0.25.0
+
+# ===== 模板引擎 =====
+jinja2>=3.1.0,<4.0.0
+
+# ===== Tokenizer =====
+# 用于 token 计数（可选，不安装则使用估算方式）
+transformers>=4.39.0,<5.0.0
+
+# ===== WASM 运行时 =====
+# 用于 DeepSeek PoW (Proof of Work) 计算
+wasmtime>=14.0.0
