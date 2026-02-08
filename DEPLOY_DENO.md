@@ -34,7 +34,10 @@ git push
 ## Step 3: Configure Deno Deploy
 
 1. **Create Project**: Go to Deno Deploy and create a new project linked to your repository.
-2. **Entry Point**: Select `src/main.ts` (it should be automatically detected).
+2. **Entry Point**: 
+   - **CRITICAL**: Go to **Settings** -> **Git Integration**.
+   - Change **Entry Point** to `src/main.ts`.
+   - (The previous path `deno/src/main.ts` is no longer valid).
 3. **Environment Variables** (Optional if using config.json):
    - `DS2API_ADMIN_KEY`: Admin password (default: `your-admin-secret-key`)
    - `ACCOUNTS`: JSON string of accounts (overrides config.json)

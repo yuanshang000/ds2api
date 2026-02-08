@@ -1,16 +1,16 @@
 
+import { create, verify } from "djwt";
 import { Hono } from "hono";
-import { logger, CONFIG } from "../config.ts";
+import { CONFIG } from "../config.ts";
 import { loginDeepseekViaAccount } from "../core/deepseek.ts";
 import { getAccountIdentifier } from "../core/utils.ts";
-import { create, verify } from "djwt";
 
 const router = new Hono();
 
 // Secret key for JWT (should be in env, fallback to hardcoded for dev)
 // In Python: os.getenv("DS2API_ADMIN_KEY", "your-admin-secret-key")
 // We use the same env var for consistency
-const ADMIN_KEY = Deno.env.get("DS2API_ADMIN_KEY") || "your-admin-secret-key";
+const ADMIN_KEY = Deno.env.get("DS2API_ADMIN_KEY") || "sk-123456";
 const JWT_SECRET = Deno.env.get("DS2API_JWT_SECRET") || ADMIN_KEY;
 
 async function getJwtKey() {

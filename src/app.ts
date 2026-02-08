@@ -62,6 +62,20 @@ app.get("/", (c) => {
 </html>`);
 });
 
+// Debug route to check file structure
+import { walk } from "std/fs/walk.ts";
+app.get("/debug/files", async (c) => {
+    const files = [];
+    try {
+        for await (const entry of walk(".", { maxDepth: 4 })) {
+            files.push(entry.path);
+        }
+    } catch (e) {
+        files.push(`Error: ${e}`);
+    }
+    return c.json({ files });
+});
+
 app.onError((err, c) => {
   logger.error(`${err}`);
   return c.json({ error: { message: err.message, type: "api_error" } }, 500);
