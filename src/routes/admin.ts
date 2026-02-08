@@ -113,11 +113,64 @@ router.post("/config", verifyAdmin, async (c) => {
         });
     }
 
-    // TODO: Save to Deno KV for persistence
     // For now, we update in-memory CONFIG which persists as long as the isolate lives
     // We should implement Deno KV saving in config.ts
+    // Use Deno KV to persist configuration
+    try {
+        const kv = await Deno.openKv();
+        await kv.set(["config"], CONFIG);
+    } catch (e) {
+        console.error("Failed to save to Deno KV:", e);
+    }
 
-    return c.json({ success: true, message: "Configuration updated (Memory only for now)" });
+    return c.json({ success: true, message: "Configuration updated" });
+});
+
+// --- API Keys Management ---
+
+router.post("/keys", verifyAdmin, async (c) => {
+    const data = await c.req.json();
+    const key = (data.key || "").trim();
+    
+    if (!key) {
+        return c.json({ error: "Key cannot be empty" }, 400);
+    }
+    
+    if (CONFIG.keys.includes(key)) {
+        return c.json({ error: "Key already exists" }, 400);
+    }
+    
+    CONFIG.keys.push(key);
+    
+    // Persist
+    try {
+        const kv = await Deno.openKv();
+        await kv.set(["config"], CONFIG);
+    } catch (e) {
+        console.error("Failed to save to Deno KV:", e);
+    }
+
+    return c.json({ success: true, message: "Key added", keys: CONFIG.keys });
+});
+
+router.delete("/keys/:key", verifyAdmin, async (c) => {
+    const key = c.req.param("key");
+    
+    if (!CONFIG.keys.includes(key)) {
+        return c.json({ error: "Key not found" }, 404);
+    }
+    
+    CONFIG.keys = CONFIG.keys.filter(k => k !== key);
+    
+    // Persist
+    try {
+        const kv = await Deno.openKv();
+        await kv.set(["config"], CONFIG);
+    } catch (e) {
+        console.error("Failed to save to Deno KV:", e);
+    }
+
+    return c.json({ success: true, message: "Key deleted", keys: CONFIG.keys });
 });
 
 // --- Account Routes ---

@@ -84,6 +84,20 @@ async function loadConfig() {
     }
     logger.info("Loaded keys from AUTH_KEYS env var");
   }
+  // 3. Load from Deno KV (Persistence)
+  try {
+    const kv = await Deno.openKv();
+    const result = await kv.get(["config"]);
+    if (result.value) {
+        const kvConfig = result.value as Config;
+        // Merge KV config
+        if (kvConfig.accounts) CONFIG.accounts = kvConfig.accounts;
+        if (kvConfig.keys) CONFIG.keys = kvConfig.keys;
+        logger.info("Loaded config from Deno KV");
+    }
+  } catch (e) {
+    logger.warning(`Deno KV not available or failed: ${e}`);
+  }
 }
 
 // Execute load (Top-level await)
