@@ -204,6 +204,30 @@ router.post("/accounts", verifyAdmin, async (c) => {
     return c.json({ success: true, message: "Account added" });
 });
 
+router.get("/accounts", verifyAdmin, (c) => {
+    // Pagination (simple implementation for now)
+    const page = parseInt(c.req.query("page") || "1");
+    const pageSize = parseInt(c.req.query("page_size") || "10");
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+
+    const safeAccounts = (CONFIG.accounts || []).map(acc => ({
+        email: acc.email || "",
+        mobile: acc.mobile || "",
+        has_password: !!acc.password,
+        has_token: !!acc.token,
+        token_preview: acc.token ? acc.token.substring(0, 20) + "..." : "",
+        password: acc.password // Frontend needs this to display (even if masked)
+    }));
+
+    return c.json({
+        total: safeAccounts.length,
+        items: safeAccounts.slice(start, end),
+        page,
+        page_size: pageSize
+    });
+});
+
 router.delete("/accounts", verifyAdmin, async (c) => {
     const email = c.req.query("email");
     const mobile = c.req.query("mobile");
