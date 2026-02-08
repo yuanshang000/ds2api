@@ -277,6 +277,65 @@ router.delete("/accounts", verifyAdmin, async (c) => {
     return c.json({ success: true, message: "Account deleted" });
 });
 
+router.get("/queue/status", verifyAdmin, (c) => {
+    const total = CONFIG.accounts.length;
+    // Simple logic: if token exists, it's "valid" (or at least initialized)
+    const valid = CONFIG.accounts.filter(a => !!a.token).length;
+    return c.json({
+        total: total,
+        valid: valid,
+        invalid: total - valid,
+        pending: 0 
+    });
+});
+
+router.post("/import", verifyAdmin, async (c) => {
+    const data = await c.req.json();
+    let importedKeys = 0;
+    let importedAccounts = 0;
+
+    if (data.keys && Array.isArray(data.keys)) {
+        for (const key of data.keys) {
+            if (typeof key === "string" && key.trim() && !CONFIG.keys.includes(key)) {
+                CONFIG.keys.push(key.trim());
+                importedKeys++;
+            }
+        }
+    }
+
+    if (data.accounts && Array.isArray(data.accounts)) {
+        for (const acc of data.accounts) {
+            if (!acc || typeof acc !== "object") continue;
+            // Basic validation
+            if (!acc.password && !acc.token) continue;
+            if (!acc.email && !acc.mobile) continue;
+
+            const id = getAccountIdentifier(acc);
+            if (!CONFIG.accounts.some(a => getAccountIdentifier(a) === id)) {
+                CONFIG.accounts.push({ 
+                    email: acc.email || "", 
+                    mobile: acc.mobile || "", 
+                    password: acc.password || "", 
+                    token: acc.token || "" 
+                });
+                importedAccounts++;
+            }
+        }
+    }
+
+    if (importedKeys > 0 || importedAccounts > 0) {
+        // Persist
+        try {
+            const kv = await Deno.openKv();
+            await kv.set(["config"], CONFIG);
+        } catch (e) {
+             console.error("Failed to save to Deno KV:", e);
+        }
+    }
+
+    return c.json({ imported_keys: importedKeys, imported_accounts: importedAccounts });
+});
+
 router.post("/accounts/test", verifyAdmin, async (c) => {
     let body;
     try {
@@ -346,6 +405,13 @@ router.get("/vercel/config", verifyAdmin, (c) => {
         project_id: "",
         team_id: null
     });
+});
+
+router.post("/vercel/sync", verifyAdmin, (c) => {
+    return c.json({ 
+        success: false, 
+        message: "Vercel Sync is not supported on Deno Deploy. Please manage environment variables in Deno Deploy settings." 
+    }, 400);
 });
 
 export default router;
