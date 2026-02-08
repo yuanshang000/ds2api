@@ -77,6 +77,23 @@ router.post("/v1/chat/completions", async (c) => {
     }
 
     try {
+        // Create Chat Session first (Required by DeepSeek API)
+        const sessionHeaders = {
+            ...BASE_HEADERS,
+            "Authorization": `Bearer ${deepseekToken}`,
+        };
+        const sessionResp = await fetch("https://chat.deepseek.com/api/v0/chat_session/create", {
+            method: "POST",
+            headers: sessionHeaders,
+            body: JSON.stringify({ agent: "chat" }),
+        });
+        
+        let chatSessionId = null;
+        if (sessionResp.ok) {
+            const sessionData = await sessionResp.json();
+            chatSessionId = sessionData.data?.biz_data?.id;
+        }
+
         // Get PoW
         const pow = await getPowResponse(deepseekToken);
         if (!pow) {
@@ -95,6 +112,7 @@ router.post("/v1/chat/completions", async (c) => {
             thinking_enabled: false,
             pow_challenge_response: pow,
             stream: true, 
+            chat_session_id: chatSessionId, // Add session ID
         };
         
         const headers = {
