@@ -50,8 +50,8 @@ router.post("/login", async (c) => {
         return c.json({ error: "Invalid JSON" }, 400);
     }
 
-    // Support both "password" (WebUI) and direct key check
-    const password = body.password || "";
+    // Support direct key check (admin_key from WebUI)
+    const password = body.admin_key || "";
     
     if (password !== ADMIN_KEY) {
         return c.json({ error: "Invalid password" }, 401);
@@ -67,7 +67,10 @@ router.post("/login", async (c) => {
     return c.json({ 
         access_token: jwt, 
         token_type: "bearer",
-        expires_in: 24 * 3600
+        expires_in: 24 * 3600,
+        // Frontend expects these fields
+        success: true,
+        token: jwt, 
     });
 });
 
