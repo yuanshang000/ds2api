@@ -15,17 +15,19 @@ app.route("/", openaiRoute);
 app.route("/admin", adminRoute);
 
 // Serve Static Files (Frontend)
-// Deno Deploy serves files from the repository.
-// We expect the built React app to be in ../static/admin relative to deno/src/app.ts
-// which means static/admin in the repo root.
-// Hono serveStatic root is relative to the CWD usually.
-// In Deno Deploy, CWD is usually project root.
-app.use("/admin/*", serveStatic({ root: "./static/admin" }));
+// We need to rewrite the path because Hono doesn't automatically strip the prefix in serveStatic
+app.use("/admin/*", serveStatic({
+  root: "./static/admin",
+  rewriteRequestPath: (path) => path.replace(/^\/admin/, ""),
+}));
 
 // Fallback for SPA (Single Page Application)
-// If a file isn't found in /admin/*, serve index.html
-// This is needed for React Router paths like /admin/login
-app.get("/admin/*", serveStatic({ path: "./static/admin/index.html" }));
+// If a file isn't found in /admin/* (e.g. /admin/login), serve index.html
+// Note: This must come AFTER the static file serving above
+app.get("/admin/*", async (c, next) => {
+    // Try to serve index.html explicitly
+    return await serveStatic({ path: "./static/admin/index.html" })(c, next);
+});
 
 // Root welcome page (if index.html exists in static/admin, maybe serve that or a simple welcome)
 // The Python app has a welcome page at /
