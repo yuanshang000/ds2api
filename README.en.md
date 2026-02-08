@@ -213,6 +213,37 @@ docker-compose logs -f
 
 > **Docker advantage**: Zero-intrusion design; update the main code with `docker-compose up -d --build` without changing Docker configuration. See [DEPLOY.md](DEPLOY.md#docker-deployment-recommended).
 
+### Option 4: Deno Deploy (Recommended)
+
+This project is fully compatible with Deno, supports edge deployment without a server, and includes data persistence (Deno KV).
+
+1.  **Prepare Code**
+    *   Fork this repository to your GitHub.
+    *   **Important**: Build frontend assets locally (Deno Deploy does not support frontend build steps):
+        ```bash
+        cd webui
+        npm install
+        npm run build
+        cd ..
+        # Force add build artifacts
+        git add -f static/admin
+        git commit -m "Build frontend assets for Deno Deploy"
+        git push
+        ```
+
+2.  **Create Project**
+    *   Visit [Deno Deploy](https://dash.deno.com/) and create a new project.
+    *   Connect your GitHub repository.
+    *   Set **Entry Point** to `src/main.ts`.
+
+3.  **Configure Environment Variables**
+    *   `DS2API_ADMIN_KEY`: Admin password (default `sk-123456`).
+    *   `DS2API_JWT_SECRET`: JWT signing secret (optional, same as above by default).
+
+4.  **Access**
+    *   Once deployed, visit `https://your-project.deno.dev/admin/` to access the admin console.
+    *   Configuration data is automatically saved to Deno KV and persists across restarts.
+
 ## ⚠️ Disclaimer
 
 **This project is based on reverse engineering and stability is not guaranteed.**

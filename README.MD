@@ -215,6 +215,37 @@ docker-compose logs -f
 
 > **Docker 优势**：零侵入设计，主代码更新只需 `docker-compose up -d --build`，无需修改 Docker 配置。详见 [DEPLOY.md](DEPLOY.md#docker-部署推荐)。
 
+### 方式四：Deno Deploy 部署（推荐）
+
+本项目已完全适配 Deno 环境，支持边缘部署，无需服务器，且支持数据持久化（Deno KV）。
+
+1.  **准备代码**
+    *   Fork 本仓库到你的 GitHub。
+    *   **重要**：在本地构建前端静态文件（因为 Deno Deploy 不支持前端构建步骤）：
+        ```bash
+        cd webui
+        npm install
+        npm run build
+        cd ..
+        # 强制提交构建产物
+        git add -f static/admin
+        git commit -m "Build frontend assets for Deno Deploy"
+        git push
+        ```
+
+2.  **创建项目**
+    *   访问 [Deno Deploy](https://dash.deno.com/) 并新建项目。
+    *   连接你的 GitHub 仓库。
+    *   **Entry Point** 设置为 `src/main.ts`。
+
+3.  **配置环境变量**
+    *   `DS2API_ADMIN_KEY`: 管理后台密码（默认 `sk-123456`）。
+    *   `DS2API_JWT_SECRET`: JWT 签名密钥（可选，默认同上）。
+
+4.  **访问**
+    *   部署完成后，访问 `https://你的项目.deno.dev/admin/` 进入管理后台。
+    *   配置数据会自动保存到 Deno KV，重启不会丢失。
+
 ## ⚠️ 免责声明
 
 **本项目基于逆向工程实现，服务稳定性无法保证。**
