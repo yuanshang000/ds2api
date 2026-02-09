@@ -1,5 +1,4 @@
 
-import { ensureDir } from "std/fs/mod.ts";
 import { getAccountIdentifier } from "./core/utils.ts";
 
 export const WASM_PATH = "./sha3_wasm_bg.7b9ca65ddd.wasm";
@@ -88,31 +87,30 @@ async function loadConfig() {
   try {
     const kv = await Deno.openKv();
     
-    // 1. Try V2 Config (Split keys)
-    const idsResult = await kv.get(["config", "account_ids"]);
-    if (idsResult.value) {
-        const ids = idsResult.value as string[];
-        const accounts: Account[] = [];
+    // 1. Try V2 Config (Split keys - Prefix Scan)
+    // We scan ALL keys starting with ["accounts"] to ensure we don't miss any.
+    // This fixes issues where account_ids list might get out of sync.
+    const accounts: Account[] = [];
+    const entries = kv.list({ prefix: ["accounts"] });
+    
+    for await (const entry of entries) {
+        if (entry.value) {
+            accounts.push(entry.value as Account);
+        }
+    }
+
+    if (accounts.length > 0) {
+        CONFIG.accounts = accounts;
         
         // Load keys
         const keysResult = await kv.get(["config", "keys"]);
         if (keysResult.value) CONFIG.keys = keysResult.value as string[];
         
-        // Load accounts in parallel
-        const futures = ids.map(id => kv.get(["accounts", id]));
-        const results = await Promise.all(futures);
-        
-        for (const res of results) {
-            if (res.value) accounts.push(res.value as Account);
-        }
-        
-        CONFIG.accounts = accounts;
-        
         // Load debug
         const debugResult = await kv.get(["config", "debug"]);
         if (debugResult.value !== null) CONFIG.debug = !!debugResult.value;
 
-        logger.info(`Loaded ${accounts.length} accounts from KV (v2)`);
+        logger.info(`Loaded ${accounts.length} accounts from KV (v2 prefix scan)`);
     } else {
         // 2. Fallback to Legacy Config (Single Blob)
         const result = await kv.get(["config"]);
