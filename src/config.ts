@@ -132,6 +132,62 @@ async function loadConfig() {
 }
 
 /**
+ * Helper to fetch latest accounts from KV directly
+ * Used by admin endpoints to ensure fresh data
+ */
+export async function getAccountsFromKV(): Promise<Account[]> {
+  try {
+    const kv = await Deno.openKv();
+    const accounts: Account[] = [];
+    const entries = kv.list({ prefix: ["accounts"] });
+    
+    for await (const entry of entries) {
+        if (entry.value) {
+            accounts.push(entry.value as Account);
+        }
+    }
+    
+    // Update local cache side-effect
+    if (accounts.length > 0) {
+        CONFIG.accounts = accounts;
+    }
+    
+    return accounts;
+  } catch (e) {
+    logger.error(`Failed to fetch accounts from KV: ${e}`);
+    return CONFIG.accounts; // Fallback to memory
+  }
+}
+
+/**
+ * Update a single account in KV and memory
+ */
+export async function updateAccountInKV(account: Account) {
+  try {
+    const kv = await Deno.openKv();
+    const id = getAccountIdentifier(account);
+    
+    // Save to KV
+    await kv.set(["accounts", id], account);
+    
+    // Update memory
+    const idx = CONFIG.accounts.findIndex(a => getAccountIdentifier(a) === id);
+    if (idx >= 0) {
+        CONFIG.accounts[idx] = account;
+    } else {
+        CONFIG.accounts.push(account);
+    }
+    
+    // Update ID list (optional but good for consistency)
+    const accountIds = CONFIG.accounts.map(acc => getAccountIdentifier(acc));
+    await kv.set(["config", "account_ids"], accountIds);
+    
+  } catch (e) {
+    logger.error(`Failed to update account in KV: ${e}`);
+  }
+}
+
+/**
  * Save current configuration to Deno KV
  * Uses split-key strategy to avoid 64KB limit
  */

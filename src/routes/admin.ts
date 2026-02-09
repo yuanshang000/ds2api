@@ -1,7 +1,7 @@
 
 import { create, verify } from "djwt";
 import { Hono } from "hono";
-import { CONFIG, saveConfig } from "../config.ts";
+import { CONFIG, saveConfig, getAccountsFromKV, updateAccountInKV } from "../config.ts";
 import { loginDeepseekViaAccount } from "../core/deepseek.ts";
 import { getAccountIdentifier } from "../core/utils.ts";
 
@@ -184,14 +184,17 @@ router.post("/accounts", verifyAdmin, async (c) => {
     return c.json({ success: true, message: "Account added" });
 });
 
-router.get("/accounts", verifyAdmin, (c) => {
+router.get("/accounts", verifyAdmin, async (c) => {
     // Pagination (simple implementation for now)
     const page = parseInt(c.req.query("page") || "1");
     const pageSize = parseInt(c.req.query("page_size") || "10");
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
 
-    const safeAccounts = (CONFIG.accounts || []).map(acc => ({
+    // Fetch fresh accounts from KV
+    const accounts = await getAccountsFromKV();
+
+    const safeAccounts = (accounts || []).map(acc => ({
         email: acc.email || "",
         mobile: acc.mobile || "",
         has_password: !!acc.password,
@@ -316,7 +319,9 @@ router.post("/accounts/test", verifyAdmin, async (c) => {
     // Case 1: identifier provided (from WebUI test button)
     if (body.identifier) {
         const id = body.identifier;
-        account = CONFIG.accounts.find(a => getAccountIdentifier(a) === id);
+        // Fetch latest state from KV
+        const accounts = await getAccountsFromKV();
+        account = accounts.find(a => getAccountIdentifier(a) === id);
         if (!account) return c.json({ error: "Account not found" }, 404);
     }
     // Case 2: Direct fields at root (email/mobile/password)
@@ -349,6 +354,9 @@ router.post("/accounts/test", verifyAdmin, async (c) => {
         
         // Simple verification: can we get a token?
         if (account.token) {
+            // Save updated account (with token) to KV immediately
+            await updateAccountInKV(account);
+            
             result.success = true;
             result.message = "Login successful, token obtained";
             result.data = { token_preview: account.token.substring(0, 10) + "..." };
