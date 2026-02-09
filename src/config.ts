@@ -1,5 +1,6 @@
 
 import { ensureDir } from "std/fs/mod.ts";
+import { getAccountIdentifier } from "./core/utils.ts";
 
 export const WASM_PATH = "./sha3_wasm_bg.7b9ca65ddd.wasm";
 
@@ -86,16 +87,82 @@ async function loadConfig() {
   // 3. Load from Deno KV (Persistence)
   try {
     const kv = await Deno.openKv();
-    const result = await kv.get(["config"]);
-    if (result.value) {
-        const kvConfig = result.value as Config;
-        // Merge KV config
-        if (kvConfig.accounts) CONFIG.accounts = kvConfig.accounts;
-        if (kvConfig.keys) CONFIG.keys = kvConfig.keys;
-        logger.info("Loaded config from Deno KV");
+    
+    // 1. Try V2 Config (Split keys)
+    const idsResult = await kv.get(["config", "account_ids"]);
+    if (idsResult.value) {
+        const ids = idsResult.value as string[];
+        const accounts: Account[] = [];
+        
+        // Load keys
+        const keysResult = await kv.get(["config", "keys"]);
+        if (keysResult.value) CONFIG.keys = keysResult.value as string[];
+        
+        // Load accounts in parallel
+        const futures = ids.map(id => kv.get(["accounts", id]));
+        const results = await Promise.all(futures);
+        
+        for (const res of results) {
+            if (res.value) accounts.push(res.value as Account);
+        }
+        
+        CONFIG.accounts = accounts;
+        
+        // Load debug
+        const debugResult = await kv.get(["config", "debug"]);
+        if (debugResult.value !== null) CONFIG.debug = !!debugResult.value;
+
+        logger.info(`Loaded ${accounts.length} accounts from KV (v2)`);
+    } else {
+        // 2. Fallback to Legacy Config (Single Blob)
+        const result = await kv.get(["config"]);
+        if (result.value) {
+            const kvConfig = result.value as Config;
+            // Merge KV config
+            if (kvConfig.accounts) CONFIG.accounts = kvConfig.accounts;
+            if (kvConfig.keys) CONFIG.keys = kvConfig.keys;
+            logger.info("Loaded config from Deno KV (legacy)");
+            
+            // Auto-migrate to V2
+            await saveConfig();
+            logger.info("Migrated config to V2 format");
+        }
     }
   } catch (e) {
     logger.warning(`Deno KV not available or failed: ${e}`);
+  }
+}
+
+/**
+ * Save current configuration to Deno KV
+ * Uses split-key strategy to avoid 64KB limit
+ */
+export async function saveConfig() {
+  try {
+    const kv = await Deno.openKv();
+    
+    // 1. Save Account IDs list
+    const accountIds = CONFIG.accounts.map(acc => getAccountIdentifier(acc));
+    await kv.set(["config", "account_ids"], accountIds);
+    
+    // 2. Save individual accounts
+    for (const acc of CONFIG.accounts) {
+        const id = getAccountIdentifier(acc);
+        await kv.set(["accounts", id], acc);
+    }
+    
+    // 3. Save keys
+    await kv.set(["config", "keys"], CONFIG.keys);
+    
+    // 4. Save debug setting
+    await kv.set(["config", "debug"], CONFIG.debug);
+    
+    // Optional: Clean up removed accounts?
+    // For now, we don't delete old ["accounts", id] keys to avoid complex diffing logic.
+    // They will just be orphaned and not loaded.
+    
+  } catch (e) {
+    logger.error(`Failed to save config to KV: ${e}`);
   }
 }
 

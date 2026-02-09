@@ -1,7 +1,7 @@
 
 import { create, verify } from "djwt";
 import { Hono } from "hono";
-import { CONFIG } from "../config.ts";
+import { CONFIG, saveConfig } from "../config.ts";
 import { loginDeepseekViaAccount } from "../core/deepseek.ts";
 import { getAccountIdentifier } from "../core/utils.ts";
 
@@ -116,12 +116,7 @@ router.post("/config", verifyAdmin, async (c) => {
     // For now, we update in-memory CONFIG which persists as long as the isolate lives
     // We should implement Deno KV saving in config.ts
     // Use Deno KV to persist configuration
-    try {
-        const kv = await Deno.openKv();
-        await kv.set(["config"], CONFIG);
-    } catch (e) {
-        console.error("Failed to save to Deno KV:", e);
-    }
+    await saveConfig();
 
     return c.json({ success: true, message: "Configuration updated" });
 });
@@ -143,12 +138,7 @@ router.post("/keys", verifyAdmin, async (c) => {
     CONFIG.keys.push(key);
     
     // Persist
-    try {
-        const kv = await Deno.openKv();
-        await kv.set(["config"], CONFIG);
-    } catch (e) {
-        console.error("Failed to save to Deno KV:", e);
-    }
+    await saveConfig();
 
     return c.json({ success: true, message: "Key added", keys: CONFIG.keys });
 });
@@ -163,12 +153,7 @@ router.delete("/keys/:key", verifyAdmin, async (c) => {
     CONFIG.keys = CONFIG.keys.filter(k => k !== key);
     
     // Persist
-    try {
-        const kv = await Deno.openKv();
-        await kv.set(["config"], CONFIG);
-    } catch (e) {
-        console.error("Failed to save to Deno KV:", e);
-    }
+    await saveConfig();
 
     return c.json({ success: true, message: "Key deleted", keys: CONFIG.keys });
 });
@@ -194,12 +179,7 @@ router.post("/accounts", verifyAdmin, async (c) => {
     CONFIG.accounts.push(newAccount);
 
     // Persist
-    try {
-        const kv = await Deno.openKv();
-        await kv.set(["config"], CONFIG);
-    } catch (e) {
-        console.error("Failed to save to Deno KV:", e);
-    }
+    await saveConfig();
 
     return c.json({ success: true, message: "Account added" });
 });
@@ -242,12 +222,7 @@ router.delete("/accounts/:id", verifyAdmin, async (c) => {
     }
 
     // Persist
-    try {
-        const kv = await Deno.openKv();
-        await kv.set(["config"], CONFIG);
-    } catch (e) {
-        console.error("Failed to save to Deno KV:", e);
-    }
+    await saveConfig();
 
     return c.json({ success: true, message: "Account deleted" });
 });
@@ -267,12 +242,7 @@ router.delete("/accounts", verifyAdmin, async (c) => {
     }
 
     // Persist
-    try {
-        const kv = await Deno.openKv();
-        await kv.set(["config"], CONFIG);
-    } catch (e) {
-        console.error("Failed to save to Deno KV:", e);
-    }
+    await saveConfig();
 
     return c.json({ success: true, message: "Account deleted" });
 });
@@ -325,12 +295,7 @@ router.post("/import", verifyAdmin, async (c) => {
 
     if (importedKeys > 0 || importedAccounts > 0) {
         // Persist
-        try {
-            const kv = await Deno.openKv();
-            await kv.set(["config"], CONFIG);
-        } catch (e) {
-             console.error("Failed to save to Deno KV:", e);
-        }
+        await saveConfig();
     }
 
     return c.json({ imported_keys: importedKeys, imported_accounts: importedAccounts });
