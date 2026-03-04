@@ -7,12 +7,12 @@ export const DEEPSEEK_COMPLETION_URL = `https://${DEEPSEEK_HOST}/api/v0/chat/com
 
 export const BASE_HEADERS = {
     "Host": "chat.deepseek.com",
-    "User-Agent": "DeepSeek/1.6.11 Android/35",
+    "User-Agent": "DeepSeek/1.0.13 Android/35",
     "Accept": "application/json",
     "Accept-Encoding": "gzip",
     "Content-Type": "application/json",
     "x-client-platform": "android",
-    "x-client-version": "1.6.11",
+    "x-client-version": "1.3.0-auto-resume",
     "x-client-locale": "zh_CN",
     "accept-charset": "UTF-8",
 };
