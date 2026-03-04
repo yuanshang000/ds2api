@@ -177,8 +177,10 @@ export function parseSseChunkForContent(
   let ptype = "text";
   if (chunkPath === "response/thinking_content") {
     ptype = "thinking";
+    newFragmentType = "thinking";
   } else if (chunkPath === "response/content") {
     ptype = "text";
+    newFragmentType = "text";
   } else if (chunkPath.includes("response/fragments") && chunkPath.includes("/content")) {
     ptype = newFragmentType;
   } else if (!chunkPath) {

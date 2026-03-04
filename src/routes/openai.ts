@@ -357,6 +357,7 @@ router.post("/anthropic/v1/messages", async (c) => {
                 let fullResponseText = "";
                 let currentFragmentType = "thinking";
                 let responseCompleted = false;
+                let buffer = "";
                 const messageId = `msg_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`;
                 const inputTokens = estimateClaudeInputTokens(body?.system || "", normalizedMessages, toolsRequested);
 
@@ -365,7 +366,9 @@ router.post("/anthropic/v1/messages", async (c) => {
                         const { done, value } = await reader.read();
                         if (done) break;
                         const chunk = decoder.decode(value, { stream: true });
-                        const lines = chunk.split("\n");
+                        buffer += chunk;
+                        const lines = buffer.split("\n");
+                        buffer = lines.pop() ?? "";
 
                         for (const line of lines) {
                             const trimmed = line.trim();
@@ -503,12 +506,15 @@ router.post("/anthropic/v1/messages", async (c) => {
         let finalContent = "";
         let finalReasoning = "";
         let currentFragmentType = "thinking";
+        let buffer = "";
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split("\n");
+            buffer += chunk;
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
 
             for (const line of lines) {
                 const trimmed = line.trim();
@@ -719,6 +725,7 @@ router.post("/v1/chat/completions", async (c) => {
                 let finalText = "";
                 let finalThinking = "";
                 let firstChunkSent = false;
+                let buffer = "";
 
                 try {
                     while (true) {
@@ -728,7 +735,9 @@ router.post("/v1/chat/completions", async (c) => {
                             break;
                         }
                         const chunk = decoder.decode(value, { stream: true });
-                        const lines = chunk.split("\n");
+                        buffer += chunk;
+                        const lines = buffer.split("\n");
+                        buffer = lines.pop() ?? "";
 
                         for (const line of lines) {
                             const trimmed = line.trim();
@@ -849,12 +858,15 @@ router.post("/v1/chat/completions", async (c) => {
         let finalText = "";
         let finalThinking = "";
         let currentFragmentType = "thinking";
+        let buffer = "";
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split("\n");
+            buffer += chunk;
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
 
             for (const line of lines) {
                 const trimmed = line.trim();
