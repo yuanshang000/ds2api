@@ -53,8 +53,9 @@ function extractContentFromItem(item: any, defaultType: string): [string, string
   return null;
 }
 
-function extractContentRecursive(items: any[], defaultType: string): [string, string][] | null {
+function extractContentRecursive(items: any[], defaultType: string): { contents: [string, string][], finished: boolean } {
   const extracted: [string, string][] = [];
+  let finished = false;
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
 
@@ -66,7 +67,8 @@ function extractContentRecursive(items: any[], defaultType: string): [string, st
 
     // Check finished signal
     if (itemP === "status" && itemV === "FINISHED") {
-      return null;
+      finished = true;
+      continue;
     }
 
     // Skip status related
@@ -113,7 +115,7 @@ function extractContentRecursive(items: any[], defaultType: string): [string, st
       }
     }
   }
-  return extracted;
+  return { contents: extracted, finished };
 }
 
 export function parseSseChunkForContent(
@@ -199,10 +201,11 @@ export function parseSseChunkForContent(
     }
   } else if (Array.isArray(vValue)) {
     const result = extractContentRecursive(vValue, ptype);
-    if (result === null) {
-      return { contents: [], isFinished: true, newFragmentType };
+    if (result.finished) {
+      contents.push(...result.contents);
+      return { contents, isFinished: true, newFragmentType };
     }
-    contents.push(...result);
+    contents.push(...result.contents);
   }
 
   return { contents, isFinished: false, newFragmentType };
